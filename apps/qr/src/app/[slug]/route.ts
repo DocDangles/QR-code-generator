@@ -9,7 +9,9 @@ export const dynamic = "force-dynamic";
 const SECRET = process.env.VISITOR_SALT_SECRET ?? "dev-only-change-me";
 const TTL_MS = 60_000;
 type Code = typeof qrCodes.$inferSelect;
-const codeCache = new Map<string, { at: number; code: Code | null }>();
+// Shared on globalThis so saving a code (in another route bundle) can clear it.
+const g = globalThis as unknown as { __codeCache?: Map<string, { at: number; code: Code | null }> };
+const codeCache = (g.__codeCache ??= new Map());
 let clientCache: { at: number; fallback: string } | null = null;
 
 async function fallbackUrl(db: any): Promise<string> {

@@ -96,3 +96,13 @@ export const scans = pgTable(
   },
   (t) => [index("scans_code_time_idx").on(t.qrCodeId, t.scannedAt)],
 );
+
+/** Single-use magic-link tokens. Only the SHA-256 of the token is stored. */
+export const loginTokens = pgTable("login_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tokenHash: text("token_hash").notNull().unique(),
+  email: text("email").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

@@ -18,14 +18,19 @@ function repoRoot(): string {
 }
 
 type Db = any; // postgres-js and PGlite drizzle instances share the query API
-let cached: Db | undefined;
+// One handle per process, shared across Next route bundles (two PGlite instances on one folder would corrupt it).
+const g = globalThis as unknown as { __esDb?: Promise<Db> };
 
 /**
  * Production / Railway: DATABASE_URL points at Postgres.
  * Local dev and tests: no DATABASE_URL -> embedded PGlite in .data/pglite.
  */
-export async function getDb(): Promise<Db> {
-  if (cached) return cached;
+export function getDb(): Promise<Db> {
+  return (g.__esDb ??= open());
+}
+
+async function open(): Promise<Db> {
+  let cached: Db;
   const url = process.env.DATABASE_URL;
   if (url) {
     const [{ drizzle }, { default: postgres }] = await Promise.all([
