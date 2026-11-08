@@ -1,0 +1,13 @@
+{
+  "name": "e-suite",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "npm run dev -w apps/qr",
+    "build": "npm run build -w apps/qr",
+    "test": "npm run test -w apps/qr",
+    "db:generate": "npm run generate -w packages/db",
+    "db:migrate": "npm run migrate -w packages/db",
+    "db:seed": "npm run seed -w packages/db"
+  }
+}
