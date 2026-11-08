@@ -1,7 +1,7 @@
 export const metadata = { title: "E Suite · QR" };
 const css = `
-:root{--ink:#1c1c1e;--mute:#6b6b70;--line:#e3e3e6;--accent:#7a1f2b;--bg:#fafafa}
-@media (prefers-color-scheme:dark){:root{--ink:#f2f2f3;--mute:#a0a0a6;--line:#38383c;--bg:#161618}}
+:root{--ink:#1c1c1e;--mute:#6b6b70;--line:#e3e3e6;--accent:#7a1f2b;--series2:#3b6ea5;--land:#e4e4e8;--bg:#fafafa}
+@media (prefers-color-scheme:dark){:root{--ink:#f2f2f3;--mute:#a0a0a6;--line:#38383c;--bg:#161618;--accent:#d4647a;--series2:#7fb0e0;--land:#2c2c30}}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;color:var(--ink);background:var(--bg);line-height:1.45}
 a{color:var(--accent)}h1{font-size:1.5rem;margin:0 0 .5rem}h2{font-size:1.05rem;margin:1.2rem 0 .5rem}
 .wrap{max-width:1100px;margin:0 auto;padding:20px 16px}
@@ -20,6 +20,15 @@ label>input,label>select{margin-top:4px;color:var(--ink)}
 .card{border:1px solid var(--line);border-radius:12px;padding:14px;background:color-mix(in srgb,var(--bg) 70%,transparent)}
 .preview{position:sticky;top:12px}.preview svg{width:100%;height:auto;display:block;background:#fff;border-radius:8px}
 table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+.stats{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:16px}
+.stat .big{font-size:2rem;font-weight:650;line-height:1.1;margin:2px 0}
+.bars{list-style:none;margin:0;padding:0;display:grid;gap:6px}.bars li{display:grid;grid-template-columns:minmax(70px,130px) 1fr 40px;gap:8px;align-items:center;font-size:.9rem}
+.bl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bt{background:var(--line);height:10px;border-radius:5px;overflow:hidden}.bf{display:block;height:100%;background:var(--accent)}.bn{text-align:right;color:var(--mute)}
+.cols{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.maps{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:8px 0 16px}.tabs a{padding:8px 14px;text-decoration:none;color:var(--mute);border-bottom:2px solid transparent}.tabs a[aria-current=page]{color:var(--ink);border-color:var(--accent)}
+th a{color:inherit;text-decoration:none}
+table svg{max-width:100%;height:auto;display:block;background:#fff;border-radius:4px}
 .mute{color:var(--mute);font-size:.85rem}.err{color:#c0392b}.ok{color:#1e8449}
 .presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
 .preset{border:1px solid var(--line);border-radius:8px;padding:4px;background:transparent;color:var(--ink);cursor:pointer;font-size:.75rem}

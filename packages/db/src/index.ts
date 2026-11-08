@@ -1,21 +1,10 @@
-import { mkdirSync, existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
 import * as schema from "./schema.ts";
 
 export * from "./schema.ts";
 export { schema };
-
-/** Walk up from cwd to the monorepo root (package.json with "workspaces"). */
-function repoRoot(): string {
-  let dir = process.cwd();
-  for (;;) {
-    const pkg = join(dir, "package.json");
-    if (existsSync(pkg) && JSON.parse(readFileSync(pkg, "utf8")).workspaces) return dir;
-    const up = dirname(dir);
-    if (up === dir) return process.cwd();
-    dir = up;
-  }
-}
 
 type Db = any; // postgres-js and PGlite drizzle instances share the query API
 // One handle per process, shared across Next route bundles (two PGlite instances on one folder would corrupt it).
@@ -23,7 +12,8 @@ const g = globalThis as unknown as { __esDb?: Promise<Db> };
 
 /**
  * Production / Railway: DATABASE_URL points at Postgres.
- * Local dev and tests: no DATABASE_URL -> embedded PGlite in .data/pglite.
+ * Local dev and tests: no DATABASE_URL -> embedded PGlite in ~/.cache/e-suite/pglite (outside the repo,
+ * or Next's file watcher sees every DB write as a code change and reloads in a loop).
  */
 export function getDb(): Promise<Db> {
   return (g.__esDb ??= open());
@@ -43,7 +33,7 @@ async function open(): Promise<Db> {
       import("drizzle-orm/pglite"),
       import("@electric-sql/pglite"),
     ]);
-    const dir = process.env.PGLITE_DIR ?? join(repoRoot(), ".data/pglite");
+    const dir = process.env.PGLITE_DIR ?? join(homedir(), ".cache", "e-suite", "pglite");
     mkdirSync(dir, { recursive: true });
     cached = drizzle(new PGlite(dir), { schema });
   }
