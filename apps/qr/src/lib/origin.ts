@@ -8,3 +8,9 @@ export function sameOrigin(req: Request): boolean {
     return false;
   }
 }
+
+/**
+ * Whether cookies get the Secure flag. Follows the address the app is served on (APP_URL), so a production
+ * build tested over plain http://localhost still works; with APP_URL unset, production defaults to secure.
+ */
+export const secureCookies = () => (process.env.APP_URL ? process.env.APP_URL.startsWith("https://") : process.env.NODE_ENV === "production");

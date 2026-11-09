@@ -73,3 +73,8 @@ export function clearSlugCache(slug: string | null) {
   const g = globalThis as unknown as { __codeCache?: Map<string, unknown> };
   if (slug) g.__codeCache?.delete(slug);
 }
+
+/** Called after the client's settings change, so the redirect picks up the new fallback URL and branding at once. */
+export function clearClientCache() {
+  (globalThis as unknown as { __clientCache?: unknown }).__clientCache = null;
+}

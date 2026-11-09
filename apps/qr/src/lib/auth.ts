@@ -24,6 +24,7 @@ export function baseUrl(req?: Request): string {
   return process.env.APP_URL ?? (req ? new URL(req.url).origin : "http://localhost:3000");
 }
 
+import { secureCookies } from "./origin";
 export { sameOrigin } from "./origin";
 export { throttled } from "./throttle";
 
@@ -59,7 +60,7 @@ export function sessionCookie(userId: string) {
   const body = Buffer.from(JSON.stringify({ uid: userId, exp })).toString("base64url");
   return {
     name: COOKIE, value: `${body}.${sign(body)}`,
-    options: { httpOnly: true, sameSite: "lax" as const, secure: process.env.NODE_ENV === "production", path: "/", maxAge: SESSION_DAYS * 86_400 },
+    options: { httpOnly: true, sameSite: "lax" as const, secure: secureCookies(), path: "/", maxAge: SESSION_DAYS * 86_400 },
   };
 }
 export const clearedCookie = () => ({ name: COOKIE, value: "", options: { path: "/", maxAge: 0 } });

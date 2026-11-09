@@ -54,6 +54,7 @@ export default async function EditCode({ params, searchParams }: { params: Promi
             <StatBox label="Scans" value={stats.total} sub="Bots excluded" />
             <StatBox label="Unique clicks" value={stats.uniques} />
           </div>
+          {stats.hasArchive && <p className="mute">This range includes daily summaries from before the retention period. Those keep totals, devices and countries; OS, browser, region and city detail is no longer stored for them.</p>}
           <div className="card">
             <h2 style={{ marginTop: 0 }}>Scans over time <span className="mute">({range.hourly ? "hourly" : "daily"})</span></h2>
             <LineChart points={stats.points} hourly={range.hourly} /><Legend />

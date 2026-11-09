@@ -1,5 +1,5 @@
 import {
-  pgTable, uuid, text, timestamp, boolean, jsonb, index, uniqueIndex,
+  pgTable, uuid, text, timestamp, boolean, jsonb, index, uniqueIndex, integer,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -118,4 +118,23 @@ export const notificationEvents = pgTable(
     sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("notification_events_uniq").on(t.qrCodeId, t.kind, t.key)],
+);
+
+/**
+ * Daily summary kept forever. Raw `scans` older than the retention period are rolled into this table
+ * and then pruned, so long-term totals survive without keeping per-scan detail.
+ * `day` is the client's local calendar date (YYYY-MM-DD) at the time of roll-up.
+ */
+export const scanDaily = pgTable(
+  "scan_daily",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    qrCodeId: uuid("qr_code_id").notNull().references(() => qrCodes.id),
+    day: text("day").notNull(),
+    scans: integer("scans").notNull(),
+    uniques: integer("uniques").notNull(),
+    byDevice: jsonb("by_device").$type<Record<string, number>>().notNull().default({}),
+    byCountry: jsonb("by_country").$type<Record<string, number>>().notNull().default({}),
+  },
+  (t) => [uniqueIndex("scan_daily_code_day").on(t.qrCodeId, t.day)],
 );

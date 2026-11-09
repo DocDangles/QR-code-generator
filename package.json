@@ -12,6 +12,7 @@
     "db:generate": "npm run generate -w packages/db",
     "db:migrate": "npm run migrate -w packages/db",
     "db:seed": "npm run seed -w packages/db",
-    "db:demo": "npm run demo -w packages/db --"
+    "db:demo": "npm run demo -w packages/db --",
+    "start": "npm run start -w apps/qr"
   }
 }

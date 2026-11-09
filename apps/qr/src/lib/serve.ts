@@ -6,7 +6,7 @@ import { buildDestination, isValidSlug, resolveState } from "./redirect";
 import { clientIp, parseScan, type ScanInfo } from "./scan";
 import { checkUnlockToken, makeUnlockToken, unlockCookieName, UNLOCK_TTL_S, verifyPassword } from "./password";
 import { clearFailures, isLocked, recordFailure } from "./throttle";
-import { sameOrigin } from "./origin";
+import { sameOrigin, secureCookies } from "./origin";
 import { notifyOnScan } from "./notify";
 import { unlockPageHtml } from "./unlock-page";
 
@@ -19,13 +19,13 @@ const TTL_MS = 60_000;
 // Shared on globalThis so saving a code (in another route bundle) can clear it.
 const g = globalThis as unknown as { __codeCache?: Map<string, { at: number; code: Code | null }> };
 const codeCache = (g.__codeCache ??= new Map());
-let clientCache: { at: number; client: Client | null } | null = null;
+const gc = globalThis as unknown as { __clientCache?: { at: number; client: Client | null } | null };
 
 async function getClient(db: Db): Promise<Client | null> {
-  if (clientCache && Date.now() - clientCache.at < TTL_MS) return clientCache.client;
+  if (gc.__clientCache && Date.now() - gc.__clientCache.at < TTL_MS) return gc.__clientCache.client;
   const [client] = await db.select().from(clients).limit(1);
-  clientCache = { at: Date.now(), client: client ?? null };
-  return clientCache.client;
+  gc.__clientCache = { at: Date.now(), client: client ?? null };
+  return gc.__clientCache.client;
 }
 const fallbackOf = (c: Client | null) => c?.fallbackUrl ?? process.env.FALLBACK_URL ?? "https://blackequitycoalition.org";
 
@@ -116,7 +116,7 @@ export async function handleUnlock(req: NextRequest, slug: string) {
   logScanLater(db, client, code, state, info); // the scan counts only once the password succeeds
   const res = go(targetFor(code, state, fallback));
   res.cookies.set(unlockCookieName(slug), makeUnlockToken(slug, code.passwordHash), {
-    httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: UNLOCK_TTL_S,
+    httpOnly: true, sameSite: "lax", secure: secureCookies(), path: "/", maxAge: UNLOCK_TTL_S,
   });
   return res;
 }
