@@ -31,8 +31,8 @@ export function startOfLocalDay({ y, m, d }: YMD, tz: string): Date {
   return new Date(t);
 }
 export const localDay = (date: Date, tz: string): YMD => { const p = zoneParts(date, tz); return { y: p.y, m: p.m, d: p.d }; };
-const addDays = ({ y, m, d }: YMD, n: number): YMD => { const x = new Date(Date.UTC(y, m - 1, d + n)); return { y: x.getUTCFullYear(), m: x.getUTCMonth() + 1, d: x.getUTCDate() }; };
-const fmt = ({ y, m, d }: YMD) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+export const addDays = ({ y, m, d }: YMD, n: number): YMD => { const x = new Date(Date.UTC(y, m - 1, d + n)); return { y: x.getUTCFullYear(), m: x.getUTCMonth() + 1, d: x.getUTCDate() }; };
+export const fmt = ({ y, m, d }: YMD) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 function parseYmd(s: string | undefined): YMD | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s ?? "");
   if (!m) return null;
@@ -74,4 +74,14 @@ export function bucketKeys(r: Range): string[] {
     if (!seen.has(k)) { seen.add(k); keys.push(k); }
   }
   return keys;
+}
+
+/** A date-only input ("2026-12-01") means "through the end of that day" in the client's time zone: the instant the next local day starts. */
+export function endOfLocalDate(dateStr: string, tz: string): Date | null {
+  const v = parseYmd(dateStr);
+  return v ? startOfLocalDay(addDays(v, 1), tz) : null;
+}
+/** The inverse, for showing a stored expiry in a date input. */
+export function expiryToLocalDate(expiresAt: Date, tz: string): string {
+  return fmt(localDay(new Date(expiresAt.getTime() - 1), tz));
 }

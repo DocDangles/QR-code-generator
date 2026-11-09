@@ -106,3 +106,16 @@ export const loginTokens = pgTable("login_tokens", {
   usedAt: timestamp("used_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** One row per email already sent (or claimed), so a notification never goes out twice. */
+export const notificationEvents = pgTable(
+  "notification_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    qrCodeId: uuid("qr_code_id").notNull().references(() => qrCodes.id),
+    kind: text("kind", { enum: ["first_scan", "threshold", "digest_daily", "digest_weekly"] }).notNull(),
+    key: text("key").notNull(), // threshold: the milestone count; digests: the period start date
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("notification_events_uniq").on(t.qrCodeId, t.kind, t.key)],
+);

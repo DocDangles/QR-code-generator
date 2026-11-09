@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { getDb, users, loginTokens } from "@e-suite/db";
+import { sendEmail } from "./mail";
 
 export type Role = "admin" | "client_editor" | "client_viewer";
 export type SessionUser = { id: string; email: string; name: string | null; role: Role };
@@ -23,22 +24,8 @@ export function baseUrl(req?: Request): string {
   return process.env.APP_URL ?? (req ? new URL(req.url).origin : "http://localhost:3000");
 }
 
-/** Blocks cross-site form posts (cookies are also SameSite=Lax). */
-export function sameOrigin(req: Request): boolean {
-  const origin = req.headers.get("origin");
-  if (!origin) return true; // non-browser clients (curl) and same-origin GET-less posts
-  try { return new URL(origin).host === req.headers.get("host"); } catch { return false; }
-}
-
-// Light in-memory throttle: 5 link requests per address per 10 minutes.
-const hits = new Map<string, number[]>();
-export function throttled(key: string, max = 5, windowMs = 600_000): boolean {
-  const now = Date.now();
-  const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
-  recent.push(now);
-  hits.set(key, recent);
-  return recent.length > max;
-}
+export { sameOrigin } from "./origin";
+export { throttled } from "./throttle";
 
 /** Creates a single-use link for a known user. Returns null for unknown emails (caller must not reveal that). */
 export async function createMagicLink(email: string, base: string): Promise<string | null> {
@@ -53,18 +40,7 @@ export async function createMagicLink(email: string, base: string): Promise<stri
 }
 
 export async function sendMagicLink(email: string, link: string): Promise<void> {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) { console.log(`[dev] magic link for ${email}: ${link}`); return; }
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: process.env.MAIL_FROM ?? "E Suite <onboarding@resend.dev>", to: [email],
-      subject: "Your sign-in link",
-      text: `Sign in to E Suite QR:\n\n${link}\n\nThis link works once and expires in ${TOKEN_MINUTES} minutes.`,
-    }),
-  });
-  if (!res.ok) console.error("magic link email failed", res.status);
+  await sendEmail(email, "Your sign-in link", `Sign in to E Suite QR:\n\n${link}\n\nThis link works once and expires in ${TOKEN_MINUTES} minutes.`);
 }
 
 /** Consumes a token (once) and returns the user, or null. */

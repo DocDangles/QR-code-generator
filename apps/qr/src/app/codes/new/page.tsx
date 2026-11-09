@@ -15,7 +15,7 @@ export default async function NewCode() {
   return (
     <Shell user={user}>
       <h1>New QR code</h1>
-      <Studio redirectBase={redirectBase(client.redirectDomain)} templates={templates.map((t: any) => ({ id: t.id, name: t.name, style: t.style }))} />
+      <Studio notifyEmail={client.notifyEmail} redirectBase={redirectBase(client.redirectDomain)} templates={templates.map((t: any) => ({ id: t.id, name: t.name, style: t.style }))} />
     </Shell>
   );
 }

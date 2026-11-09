@@ -33,3 +33,6 @@ export const SLUG_ALPHABET = "23456789abcdefghijkmnpqrstuvwxyz";
 export function isValidSlug(s: string): boolean {
   return /^[a-z0-9]{3,12}$/.test(s);
 }
+
+/** Public base URL printed on codes: the client's branded redirect domain (or an override for local testing). */
+export const redirectBase = (redirectDomain: string) => process.env.PUBLIC_REDIRECT_BASE ?? `https://${redirectDomain}`;

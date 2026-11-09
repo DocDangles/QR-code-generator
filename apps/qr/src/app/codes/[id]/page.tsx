@@ -8,7 +8,7 @@ import { redirectBase } from "@/lib/codes";
 import { RangeFilter } from "@/components/RangeFilter";
 import { BarList, Legend, LineChart, StatBox } from "@/components/charts";
 import { GeoMaps } from "@/components/GeoMaps";
-import { parseRange } from "@/lib/range";
+import { expiryToLocalDate, parseRange } from "@/lib/range";
 import { codeStats } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ export default async function EditCode({ params, searchParams }: { params: Promi
       <h1>{code.campaignName}</h1>
       <p className="mute" style={{ margin: 0, wordBreak: "break-all" }}>
         {tracked ? <>Short link <code>{shortLink}</code> → </> : "Static code → "}<a href={code.destinationUrl}>{code.destinationUrl}</a> · {code.status}
-        {code.expiresAt && <> · expires {code.expiresAt.toISOString().slice(0, 10)}</>}
+        {code.expiresAt && <> · expires end of {expiryToLocalDate(code.expiresAt, client.timezone)}</>}{code.passwordHash && <> · password protected</>}
       </p>
       <div className="row" style={{ margin: "10px 0 0" }}>
         <a className="btn" href={`/api/codes/${code.id}/image?format=svg`}>Download SVG</a>
@@ -77,11 +77,13 @@ export default async function EditCode({ params, searchParams }: { params: Promi
         redirectBase={redirectBase(client.redirectDomain)}
         templates={templates.map((t: any) => ({ id: t.id, name: t.name, style: t.style }))}
         readOnly={!canEdit(user)}
+        notifyEmail={client.notifyEmail}
         existing={{
           id: code.id, mode: code.mode, slug: code.slug, campaignName: code.campaignName, destinationUrl: code.destinationUrl,
           utmSource: code.utmSource ?? "", utmMedium: code.utmMedium ?? "", utmCampaign: code.utmCampaign ?? "",
           utmContent: code.utmContent ?? "", utmTerm: code.utmTerm ?? "", status: code.status === "paused" ? "paused" : "active",
-          expiresAt: code.expiresAt ? code.expiresAt.toISOString().slice(0, 10) : "", expireRedirectUrl: code.expireRedirectUrl ?? "",
+          expiresAt: code.expiresAt ? expiryToLocalDate(code.expiresAt, client.timezone) : "",
+          hasPassword: !!code.passwordHash, notifyRules: (code.notifyRules ?? {}) as any, expireRedirectUrl: code.expireRedirectUrl ?? "",
           style: code.style,
         }}
       />

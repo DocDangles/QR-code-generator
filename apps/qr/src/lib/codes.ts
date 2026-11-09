@@ -1,7 +1,9 @@
 import { randomInt } from "node:crypto";
 import { SLUG_ALPHABET } from "./redirect";
-import { buildDestination } from "./redirect";
+import { buildDestination, redirectBase } from "./redirect";
 import { normalizeStyle, type QrStyle } from "./qr/style";
+import { parseRules, type NotifyRules } from "./notify";
+import { endOfLocalDate } from "./range";
 
 export type CodeInput = {
   mode: "static" | "dynamic";
@@ -12,6 +14,7 @@ export type CodeInput = {
   expiresAt: Date | null;
   expireRedirectUrl: string | null;
   style: QrStyle;
+  notifyRules: NotifyRules;
 };
 
 export function generateSlug(len = 6): string {
@@ -34,12 +37,13 @@ const opt = (v: unknown, max = 100): string | null => {
 };
 
 /** Validates an untrusted create/update body. Throws Error(message) for the user. */
-export function parseCodeInput(body: any): CodeInput {
+export function parseCodeInput(body: any, tz = "America/New_York"): CodeInput {
   const campaignName = String(body?.campaignName ?? "").trim();
   if (!campaignName || campaignName.length > 120) throw new Error("Campaign name is required (120 characters max)");
   const mode = body?.mode === "static" ? "static" : "dynamic";
-  const expiresAt = body?.expiresAt ? new Date(body.expiresAt) : null;
-  if (expiresAt && Number.isNaN(expiresAt.getTime())) throw new Error("Expiry date is not valid");
+  const rawExpiry = typeof body?.expiresAt === "string" ? body.expiresAt.trim() : "";
+  const expiresAt = rawExpiry ? (/^\d{4}-\d{2}-\d{2}$/.test(rawExpiry) ? endOfLocalDate(rawExpiry, tz) : new Date(rawExpiry)) : null;
+  if (rawExpiry && (!expiresAt || Number.isNaN(expiresAt.getTime()))) throw new Error("Expiry date is not valid");
   return {
     mode, campaignName,
     destinationUrl: httpUrl(body?.destinationUrl, "Destination"),
@@ -49,12 +53,13 @@ export function parseCodeInput(body: any): CodeInput {
     expiresAt: mode === "dynamic" ? expiresAt : null,
     expireRedirectUrl: body?.expireRedirectUrl ? httpUrl(body.expireRedirectUrl, "Expired-code URL") : null,
     style: normalizeStyle(body?.style),
+    notifyRules: mode === "dynamic" ? parseRules(body?.notifyRules) : parseRules(null),
   };
 }
 
 type Target = { mode: string; slug: string | null; destinationUrl: string; utmSource: string | null; utmMedium: string | null; utmCampaign: string | null; utmContent: string | null; utmTerm: string | null };
 
-export const redirectBase = (redirectDomain: string) => process.env.PUBLIC_REDIRECT_BASE ?? `https://${redirectDomain}`;
+export { redirectBase };
 
 /** What is actually encoded in the QR image. Static: the destination itself (UTMs baked in once). Dynamic: the short link. */
 export function qrTarget(c: Target, redirectDomain: string): string {

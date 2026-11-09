@@ -11,6 +11,7 @@ type Existing = {
   id: string; mode: "static" | "dynamic"; slug: string | null; campaignName: string; destinationUrl: string;
   utmSource: string; utmMedium: string; utmCampaign: string; utmContent: string; utmTerm: string;
   status: "active" | "paused"; expiresAt: string; expireRedirectUrl: string; style: Partial<QrStyle>;
+  hasPassword: boolean; notifyRules: { firstScan?: boolean; everyN?: number | null; digest?: string };
 };
 
 const label = (s: string) => s.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
@@ -36,7 +37,7 @@ async function fileToLogo(file: File): Promise<string> {
   return c.toDataURL("image/png");
 }
 
-export function Studio({ existing, templates: initialTemplates, redirectBase, readOnly }: { existing?: Existing; templates: Template[]; redirectBase: string; readOnly?: boolean }) {
+export function Studio({ existing, templates: initialTemplates, redirectBase, readOnly, notifyEmail }: { existing?: Existing; templates: Template[]; redirectBase: string; readOnly?: boolean; notifyEmail?: string | null }) {
   const router = useRouter();
   const [mode, setMode] = useState<"static" | "dynamic">(existing?.mode ?? "dynamic");
   const [f, setF] = useState({
@@ -44,6 +45,13 @@ export function Studio({ existing, templates: initialTemplates, redirectBase, re
     utmSource: existing?.utmSource ?? "qr", utmMedium: existing?.utmMedium ?? "", utmCampaign: existing?.utmCampaign ?? "",
     utmContent: existing?.utmContent ?? "", utmTerm: existing?.utmTerm ?? "", status: existing?.status ?? "active",
     expiresAt: existing?.expiresAt ?? "", expireRedirectUrl: existing?.expireRedirectUrl ?? "",
+  });
+  const [password, setPassword] = useState("");
+  const [removePw, setRemovePw] = useState(false);
+  const [rules, setRules] = useState({
+    firstScan: existing?.notifyRules?.firstScan === true,
+    everyN: existing?.notifyRules?.everyN ? String(existing.notifyRules.everyN) : "",
+    digest: (["daily", "weekly"].includes(existing?.notifyRules?.digest ?? "") ? existing!.notifyRules.digest : "off") as string,
   });
   const [style, setStyle] = useState<QrStyle>(() => normalizeStyle(existing?.style ?? DEFAULT_STYLE));
   const [templates, setTemplates] = useState(initialTemplates);
@@ -67,12 +75,16 @@ export function Studio({ existing, templates: initialTemplates, redirectBase, re
     setBusy(true); setMsg(null);
     const res = await fetch(existing ? `/api/codes/${existing.id}` : "/api/codes", {
       method: existing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...f, mode, style, expiresAt: f.expiresAt || null }),
+      body: JSON.stringify({
+        ...f, mode, style, expiresAt: f.expiresAt || null,
+        notifyRules: { firstScan: rules.firstScan, everyN: rules.everyN ? Number(rules.everyN) : null, digest: rules.digest },
+        ...(password ? { password } : {}), ...(removePw && !password ? { removePassword: true } : {}),
+      }),
     });
     const j = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) return setMsg({ kind: "err", text: j.error ?? "Could not save" });
-    if (existing) { setMsg({ kind: "ok", text: "Saved. The printed image and short link did not change." }); router.refresh(); }
+    if (existing) { setPassword(""); setRemovePw(false); setMsg({ kind: "ok", text: "Saved. The printed image and short link did not change." }); router.refresh(); }
     else router.push(`/codes/${j.id}`);
   }
 
@@ -121,12 +133,41 @@ export function Studio({ existing, templates: initialTemplates, redirectBase, re
           ))}
         </div>
         <p className="mute" style={{ marginTop: 0 }}>{mode === "dynamic" ? "UTMs are added at scan time, never baked into the image." : "For a static code the UTMs are added to the destination once, before it is encoded."}</p>
-        {mode === "dynamic" && existing && (
-          <div className="row" style={{ alignItems: "flex-start" }}>
-            <label style={{ flex: "1 1 140px" }}>Status<select value={f.status} onChange={set("status")} disabled={off}><option value="active">Active</option><option value="paused">Paused</option></select></label>
-            <label style={{ flex: "1 1 140px" }}>Expires on<input type="date" value={f.expiresAt} onChange={set("expiresAt")} disabled={off} /></label>
-            <label style={{ flex: "2 1 240px" }}>After expiry/pause, send to<input value={f.expireRedirectUrl} onChange={set("expireRedirectUrl")} disabled={off} placeholder="Blank = the client's fallback page" /></label>
-          </div>
+        {mode === "dynamic" && (
+          <>
+            <h2>Link settings</h2>
+            <p className="mute" style={{ marginTop: 0 }}>None of these change the printed image. Each is off until you turn it on.</p>
+            <div className="card">
+              <strong>Expiration</strong>
+              <div className="row" style={{ alignItems: "flex-start", marginTop: 8 }}>
+                {existing && <label style={{ flex: "1 1 140px" }}>Status<select value={f.status} onChange={set("status")} disabled={off}><option value="active">Active</option><option value="paused">Paused</option></select></label>}
+                <label style={{ flex: "1 1 160px" }}>Expires at the end of<input type="date" value={f.expiresAt} onChange={set("expiresAt")} disabled={off} /></label>
+                <label style={{ flex: "2 1 240px" }}>After expiry or pause, send to<input value={f.expireRedirectUrl} onChange={set("expireRedirectUrl")} disabled={off} placeholder="Blank = the client's fallback page" /></label>
+              </div>
+              <p className="mute" style={{ margin: 0 }}>Scans of an expired code are still recorded but marked expired. Clear the date to remove the expiry.</p>
+            </div>
+            <div className="card" style={{ marginTop: 12 }}>
+              <strong>Password</strong> {existing?.hasPassword && !removePw && <span className="ok">· on</span>}
+              <div className="row" style={{ marginTop: 8 }}>
+                <input type="password" autoComplete="new-password" value={password} onChange={(e) => { setPassword(e.target.value); setRemovePw(false); }} disabled={off} maxLength={200}
+                  placeholder={existing?.hasPassword ? "Type a new password to change it" : "Set a password (8+ characters)"} style={{ flex: "1 1 240px", width: "auto" }} aria-label="Password" />
+                {existing?.hasPassword && <button type="button" className="chip" aria-pressed={removePw} disabled={off} onClick={() => { setRemovePw(!removePw); setPassword(""); }}>{removePw ? "Will be removed on save" : "Remove password"}</button>}
+              </div>
+              <p className="mute" style={{ margin: "8px 0 0" }}>Scanners see a branded page asking for it before being sent on. Five wrong tries lock that visitor out for 15 minutes. A scan is counted only after the right password.</p>
+            </div>
+            <div className="card" style={{ marginTop: 12 }}>
+              <strong>Email notifications</strong>
+              <p className="mute" style={{ margin: "4px 0 8px" }}>{notifyEmail ? <>Sent to <strong>{notifyEmail}</strong>.</> : <span className="err">No notification email is set for this client, so nothing will be sent.</span>}</p>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", margin: "0 0 10px" }}>
+                <input type="checkbox" style={{ width: "auto" }} checked={rules.firstScan} disabled={off} onChange={(e) => setRules({ ...rules, firstScan: e.target.checked })} /> Email me on the first scan
+              </label>
+              <div className="row" style={{ alignItems: "flex-end" }}>
+                <label style={{ flex: "1 1 180px" }}>Email me every N scans<input type="number" min={2} max={100000} inputMode="numeric" placeholder="Off" value={rules.everyN} disabled={off} onChange={(e) => setRules({ ...rules, everyN: e.target.value })} /></label>
+                <label style={{ flex: "1 1 180px" }}>Summary email<select value={rules.digest} disabled={off} onChange={(e) => setRules({ ...rules, digest: e.target.value })}><option value="off">Off</option><option value="daily">Daily (yesterday's scans)</option><option value="weekly">Weekly (Mondays)</option></select></label>
+              </div>
+              <p className="mute" style={{ margin: 0 }}>Summaries are skipped on days or weeks with no scans. Bots never count.</p>
+            </div>
+          </>
         )}
 
         <h2>Design</h2>

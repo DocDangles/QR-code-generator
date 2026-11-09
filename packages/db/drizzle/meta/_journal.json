@@ -15,6 +15,13 @@
       "when": 1794178121119,
       "tag": "0001_jazzy_ironclad",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794182784429,
+      "tag": "0002_friendly_maverick",
+      "breakpoints": true
     }
   ]
 }
